@@ -1,163 +1,3 @@
-# import streamlit as st
-# import pandas as pd
-# import matplotlib.pyplot as plt
-
-# from src.quality_score import compute_quality_score
-
-# from src.dataset_audit import (
-#     dataset_summary,
-#     missing_value_report,
-#     duplicate_report,
-#     detect_outliers_iqr,
-#     class_imbalance
-# )
-
-# st.set_page_config(page_title="Dataset Auditor", layout="wide")
-
-# st.title("📊 Responsible AI Dataset Auditor Tool")
-# st.write("Upload any dataset file (CSV/TXT) to audit anomalies, missing values, imbalance, and outliers.")
-
-# uploaded_file = st.file_uploader("Upload Dataset File", type=["csv", "txt"])
-
-# if uploaded_file is not None:
-#     try:
-#         df = pd.read_csv(uploaded_file)
-#     except Exception:
-#         df = pd.read_csv(uploaded_file, delimiter=r"\s+", engine="python")
-
-#     st.success("✅ Dataset Uploaded Successfully!")
-
-#     # Show dataset preview
-#     st.subheader("🔍 Dataset Preview")
-#     st.dataframe(df.head(20))
-
-#     # Dataset summary
-#     st.subheader("📌 Dataset Summary")
-#     summary = dataset_summary(df)
-
-#     col1, col2 = st.columns(2)
-#     col1.metric("Rows", summary["rows"])
-#     col2.metric("Columns", summary["columns"])
-
-#     st.write("### Column Data Types")
-#     st.json(summary["dtypes"])
-
-#     # Missing values
-#     st.subheader("⚠️ Missing Value Report")
-#     missing_report = missing_value_report(df)
-
-#     if missing_report.empty:
-#         st.success("✅ No missing values found!")
-#     else:
-#         st.warning("⚠️ Missing values detected!")
-#         st.dataframe(missing_report)
-
-#     # Duplicate rows
-#     st.subheader("📌 Duplicate Rows")
-#     duplicates = duplicate_report(df)
-
-#     if duplicates == 0:
-#         st.success("✅ No duplicate rows found!")
-#     else:
-#         st.warning(f"⚠️ Duplicate rows found: {duplicates}")
-
-#     # Outliers
-#     st.subheader("🚨 Outlier / Anomaly Detection (IQR Method)")
-#     outliers = detect_outliers_iqr(df)
-
-#     if len(outliers) == 0:
-#         st.success("✅ No major outliers detected in numeric columns!")
-#     else:
-#         st.warning("⚠️ Outliers detected in these columns:")
-#         st.write(outliers)
-
-#     # Target column imbalance
-#     st.subheader("⚖️ Class Imbalance Check")
-#     target_col = st.text_input("Enter Target Column Name (optional)", "")
-
-#     imbalance = None  # IMPORTANT: default value
-
-#     if target_col:
-#         imbalance = class_imbalance(df, target_col)
-
-#         if imbalance is None:
-#             st.error("❌ Target column not found in dataset!")
-#         else:
-#             st.write("### Target Distribution (%)")
-#             st.write(imbalance)
-
-#             fig, ax = plt.subplots()
-#             imbalance.plot(kind="bar", ax=ax)
-#             ax.set_title("Target Class Distribution")
-#             ax.set_ylabel("Percentage")
-#             st.pyplot(fig)
-
-#     # Correlation analysis
-#     st.subheader("📈 Correlation Check (Numeric Columns)")
-#     numeric_df = df.select_dtypes(include=["int64", "float64"])
-
-#     high_corr_pairs = []
-#     high_corr_count = 0
-
-#     if numeric_df.shape[1] > 1:
-#         corr = numeric_df.corr()
-
-#         st.write("### Correlation Matrix")
-#         st.dataframe(corr)
-
-#         for i in range(len(corr.columns)):
-#             for j in range(i + 1, len(corr.columns)):
-#                 if abs(corr.iloc[i, j]) > 0.85:
-#                     high_corr_pairs.append(
-#                         (corr.columns[i], corr.columns[j], round(corr.iloc[i, j], 3))
-#                     )
-
-#         high_corr_count = len(high_corr_pairs)
-
-#         if high_corr_count > 0:
-#             st.warning("⚠️ Highly correlated features detected (possible redundancy/leakage):")
-#             st.write(high_corr_pairs)
-#         else:
-#             st.success("✅ No extremely high correlations detected.")
-#     else:
-#         st.info("Not enough numeric columns for correlation analysis.")
-
-#     # ==============================
-#     # FINAL DATASET QUALITY VERDICT
-#     # ==============================
-#     st.subheader("✅ Final Dataset Conclusion (Audit Verdict)")
-
-#     audit_result = compute_quality_score(
-#         df=df,
-#         missing_report=missing_report,
-#         duplicates=duplicates,
-#         outliers=outliers,
-#         imbalance=imbalance,
-#         high_corr_count=high_corr_count
-#     )
-
-#     st.metric("Dataset Quality Score", f"{audit_result['quality_score']} / 100")
-#     st.write("### Risk Level:", audit_result["risk_level"])
-#     st.write("### Suitability:", audit_result["suitability"])
-
-#     if len(audit_result["risk_flags"]) > 0:
-#         st.warning("⚠️ Issues Detected:")
-#         for flag in audit_result["risk_flags"]:
-#             st.write(f"- {flag}")
-
-#     if len(audit_result["recommendations"]) > 0:
-#         st.info("🛠 Recommended Fixes:")
-#         for rec in audit_result["recommendations"]:
-#             st.write(f"- {rec}")
-#     else:
-#         st.success("🎉 Dataset looks clean and ready for ML training!")
-
-
-
-
-
-
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -167,77 +7,177 @@ from sklearn.metrics import (
     mean_absolute_error, mean_squared_error
 )
 
-from src.data_loader import load_dataset
+from src.data_loader import load_dataset, load_demo_dataset
 from src.dataset_audit import (
     dataset_summary, missing_value_report, duplicate_report,
     detect_outliers_iqr, class_imbalance, validate_target_column
 )
 from src.quality_score import compute_quality_score
 from src.model_training import train_model
-from src.bias_analysis import check_bias_distribution
+from src.bias_analysis import check_bias_distribution, bias_summary
 from src.fairness_metrics import group_accuracy, statistical_parity
 from src.report_generator import generate_pdf_report
 
 
+# ========================= Page Config =========================
 st.set_page_config(page_title="Responsible AI Audit Tool", layout="wide")
 
 st.title("🔍 Responsible AI & Bias Audit Tool")
-st.write("Upload any dataset to audit data quality, bias, fairness, and generate an audit report.")
+st.write(
+    """
+This tool audits any dataset for:
+- **Data Quality Issues**
+- **Bias & Representation Skew**
+- **Fairness Metrics (if classification)**
+- **Model Performance**
+- **Final Audit Verdict + PDF Report**
+"""
+)
 
-uploaded_file = st.file_uploader("Upload Dataset File", type=["csv", "txt", "data"])
+# ========================= Buttons Section =========================
+col1, col2 = st.columns(2)
+
+uploaded_file = col1.file_uploader("📂 Upload Dataset File", type=["csv", "txt", "data"])
+use_demo = col2.button("📌 Use Demo Dataset (Adult Income)")
+
+reset = st.button("🔄 Reset App")
 
 
-if uploaded_file:
+# ========================= Reset =========================
+if reset:
+    st.session_state.clear()
+    st.rerun()
+
+
+# ========================= Load Dataset =========================
+df = None
+demo_mode = False
+
+if use_demo:
+    df = load_demo_dataset()
+    demo_mode = True
+    st.success("✅ Demo Dataset Loaded: Adult Census Income Dataset")
+
+elif uploaded_file:
     df = load_dataset(uploaded_file)
+    st.success("✅ Dataset Uploaded Successfully!")
 
-    st.success("✅ Dataset Uploaded Successfully")
 
-    # Show only first 10 rows (avoid huge tables)
+# ========================= Helper: Final Decision =========================
+def final_audit_decision(dataset_score, model_metrics, fairness_result):
+    task = model_metrics.get("task", "unknown")
+
+    if task == "classification":
+        acc = model_metrics.get("accuracy", 0)
+
+        if dataset_score < 60 or acc < 0.5:
+            return "❌ AUDIT FAILED", "High Risk", "Not safe for deployment."
+        elif dataset_score < 80 or acc < 0.7:
+            return "⚠️ CONDITIONAL PASS", "Medium Risk", "Needs improvement before deployment."
+        else:
+            return "✅ AUDIT PASSED", "Low Risk", "Safe for controlled deployment."
+
+    elif task == "regression":
+        rmse = model_metrics.get("rmse", None)
+
+        if rmse is None:
+            return "⚠️ AUDIT INCOMPLETE", "Unknown", "Regression metrics not available."
+
+        if dataset_score < 60 or rmse > 50:
+            return "❌ AUDIT FAILED", "High Risk", "Errors too high for deployment."
+        elif dataset_score < 80 or rmse > 20:
+            return "⚠️ CONDITIONAL PASS", "Medium Risk", "Regression performance needs tuning."
+        else:
+            return "✅ AUDIT PASSED", "Low Risk", "Regression model seems usable with monitoring."
+
+    return "⚠️ AUDIT INCOMPLETE", "Unknown Risk", "Task type could not be determined."
+
+
+# ========================= Main Logic =========================
+if df is not None:
+
+    # ========================= Clean Demo Dataset =========================
+    if demo_mode and "income" in df.columns:
+        df["income"] = df["income"].astype(str).str.strip().str.replace(".", "", regex=False)
+
+    # Preview (limited)
     st.subheader("📌 Dataset Preview (First 10 rows)")
-    st.dataframe(df.head(10))
+    st.dataframe(df.head(10), use_container_width=True)
+
+    if demo_mode:
+        st.info(
+            "📌 Demo dataset is **Adult Income Census Dataset**.\n\n"
+            "Suggested Target: **income**\n"
+            "Suggested Sensitive Attribute: **sex** or **race**"
+        )
 
     # ========================= Dataset Summary =========================
-    st.subheader("📌 Dataset Summary")
+    st.subheader("📊 Dataset Summary")
     summary = dataset_summary(df)
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     col1.metric("Rows", summary["rows"])
     col2.metric("Columns", summary["columns"])
+    col3.metric("Missing Columns", df.isnull().any().sum())
 
-    with st.expander("Show Data Types"):
+    with st.expander("📌 Show Column Data Types"):
         st.json(summary["dtypes"])
 
     # ========================= Missing Values =========================
-    st.subheader("⚠ Missing Value Report")
+    st.subheader("⚠ Missing Values")
     missing_report = missing_value_report(df)
 
     if missing_report.empty:
         st.success("✅ No missing values found.")
     else:
         st.warning("⚠ Missing values detected (Top 10 shown)")
-        st.dataframe(missing_report.head(10))
+        st.dataframe(missing_report.head(10), use_container_width=True)
 
     # ========================= Duplicate Rows =========================
-    st.subheader("📌 Duplicate Rows")
+    st.subheader("📌 Duplicate Rows Check")
     duplicates = duplicate_report(df)
-    st.write("Duplicate rows found:", duplicates)
+
+    if duplicates == 0:
+        st.success("✅ No duplicate rows found.")
+    else:
+        st.warning(f"⚠ Duplicate rows found: {duplicates}")
 
     # ========================= Outliers =========================
-    st.subheader("🚨 Outlier Summary")
+    st.subheader("🚨 Outlier / Anomaly Summary")
     outliers = detect_outliers_iqr(df)
 
     if len(outliers) == 0:
         st.success("✅ No major outliers detected.")
     else:
-        st.warning("⚠ Outliers detected (Summary)")
+        st.warning("⚠ Outliers detected in numeric columns:")
         st.json(outliers)
 
     # ========================= Target and Sensitive =========================
     st.subheader("🎯 Select Target & Sensitive Attribute")
-    target_col = st.selectbox("Select Target Column", df.columns)
-    sensitive_col = st.selectbox("Select Sensitive Attribute Column", df.columns)
 
-    # Validate Target Column
+    # Default selections for demo dataset
+    default_target_index = 0
+    default_sensitive_index = 0
+
+    if demo_mode:
+        if "income" in df.columns:
+            default_target_index = df.columns.get_loc("income")
+        if "sex" in df.columns:
+            default_sensitive_index = df.columns.get_loc("sex")
+
+    target_col = st.selectbox(
+        "Select Target Column (Prediction Label)",
+        df.columns,
+        index=default_target_index
+    )
+
+    sensitive_col = st.selectbox(
+        "Select Sensitive Attribute Column (Bias Check)",
+        df.columns,
+        index=default_sensitive_index
+    )
+
+    # Validate Target
     valid, msg = validate_target_column(df, target_col)
     if not valid:
         st.error(f"❌ Invalid Target Column: {msg}")
@@ -246,36 +186,38 @@ if uploaded_file:
         st.success(f"✅ Target Column Valid: {msg}")
 
     # ========================= Class Imbalance =========================
-    st.subheader("⚖ Class Imbalance")
+    st.subheader("⚖ Class Imbalance Check")
     imbalance = class_imbalance(df, target_col)
 
-    if "error" in imbalance:
-        st.warning("Class imbalance not applicable (Regression dataset).")
+    if isinstance(imbalance, dict) and "error" in imbalance:
+        st.info("Class imbalance not applicable (Regression dataset).")
     else:
+        st.write("Target Distribution (Top Classes):")
         st.json(imbalance)
 
     # ========================= Quality Score =========================
     st.subheader("✅ Dataset Quality Score")
     quality_result = compute_quality_score(df, missing_report, duplicates, outliers, imbalance)
 
-    st.metric("Dataset Quality Score", f"{quality_result['quality_score']} / 100")
-    st.write("Risk Level:", quality_result["risk_level"])
-    st.write("Suitability:", quality_result["suitability"])
+    col1, col2 = st.columns(2)
+    col1.metric("Dataset Quality Score", f"{quality_result['quality_score']} / 100")
+    col2.metric("Risk Level", quality_result["risk_level"])
+
+    st.write("📌 Suitability:", quality_result["suitability"])
 
     if quality_result["recommendations"]:
-        st.info("Recommendations:")
-        for rec in quality_result["recommendations"]:
-            st.write("-", rec)
+        with st.expander("📌 Recommended Fixes"):
+            for rec in quality_result["recommendations"]:
+                st.write("🔹", rec)
 
     # ========================= Train Model =========================
-    st.subheader("🤖 Train Model and Evaluate")
+    st.subheader("🤖 Train Model & Evaluate Performance")
 
     model, X_test, y_test, problem_type = train_model(df, target_col)
-
     y_pred = model.predict(X_test)
 
     # ========================= Metrics =========================
-    st.subheader("📊 Model Performance Metrics")
+    st.subheader("📈 Model Performance Summary")
 
     if problem_type == "classification":
         metrics = {
@@ -285,6 +227,13 @@ if uploaded_file:
             "recall": round(recall_score(y_test, y_pred, average="weighted", zero_division=0), 3),
             "f1_score": round(f1_score(y_test, y_pred, average="weighted", zero_division=0), 3)
         }
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Accuracy", metrics["accuracy"])
+        c2.metric("Precision", metrics["precision"])
+        c3.metric("Recall", metrics["recall"])
+        c4.metric("F1 Score", metrics["f1_score"])
+
     else:
         mae = mean_absolute_error(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
@@ -295,45 +244,91 @@ if uploaded_file:
             "rmse": round(rmse, 3)
         }
 
-    st.json(metrics)
+        c1, c2 = st.columns(2)
+        c1.metric("MAE", metrics["mae"])
+        c2.metric("RMSE", metrics["rmse"])
 
     # ========================= Bias Distribution =========================
-    st.subheader("⚖ Bias Distribution Summary")
+    st.subheader("⚖ Bias Distribution Audit (Summary)")
 
     bias_table = None
+    bias_info = None
+
     if problem_type == "classification":
-        bias_table = check_bias_distribution(df.dropna(), sensitive_col, target_col)
+        bias_table = check_bias_distribution(df, sensitive_col, target_col)
 
         if bias_table is None or bias_table.empty:
             st.warning("Bias distribution could not be generated.")
         else:
-            st.write("Showing only first 10 rows of bias distribution:")
-            st.dataframe(bias_table.head(10))
+            bias_info = bias_summary(bias_table)
+
+            st.write(f"📌 Worst Affected Group: **{bias_info['worst_group']}**")
+            st.write(f"📌 Max Disparity: **{bias_info['max_disparity']}%**")
+            st.write(f"📌 Bias Risk Level: **{bias_info['risk']}**")
+
+            with st.expander("Show Bias Table (Optional)"):
+                st.dataframe(bias_table.head(10), use_container_width=True)
+
     else:
         st.info("Bias distribution not applicable for regression datasets.")
 
     # ========================= Fairness Metrics =========================
-    st.subheader("📊 Fairness Metrics")
+    st.subheader("📊 Fairness Audit Summary")
 
     fairness_results = {"note": "Fairness audit not applicable"}
 
     if problem_type == "classification" and df[target_col].nunique() == 2:
+
         df_test = X_test.copy()
         df_test[target_col] = y_test
         df_test["y_pred"] = y_pred
 
-        group_acc = group_accuracy(df_test, sensitive_col, target_col, "y_pred")
-        parity = statistical_parity(df_test, sensitive_col, "y_pred")
+        if sensitive_col not in df_test.columns:
+            st.warning(
+                f"⚠ Sensitive attribute '{sensitive_col}' is not in X_test. "
+                "Fairness evaluation cannot run."
+            )
+        else:
+            group_acc = group_accuracy(df_test, sensitive_col, target_col, "y_pred")
+            parity = statistical_parity(df_test, sensitive_col, "y_pred")
 
-        fairness_results = {
-            "Group Accuracy": group_acc,
-            "Statistical Parity (Selection Rate)": parity
-        }
+            fairness_results = {
+                "Group Accuracy": group_acc,
+                "Statistical Parity (Selection Rate)": parity
+            }
 
-        st.json(fairness_results)
+            if isinstance(parity, dict) and "error" not in parity:
+                st.write(f"📌 Selection Rate Difference: **{parity.get('difference', 'N/A')}**")
+
+                if parity.get("difference") is not None and parity["difference"] > 0.2:
+                    st.error("❌ Fairness Risk Detected (High disparity across groups).")
+                else:
+                    st.success("✅ Fairness looks acceptable (low disparity).")
+
+                with st.expander("Show Fairness Details (Optional)"):
+                    st.json(fairness_results)
+
+            else:
+                st.warning("Fairness audit could not be completed.")
+                st.json(parity)
 
     else:
-        st.info("Fairness audit requires binary classification target (2 classes). Not applicable here.")
+        st.info("Fairness audit requires binary classification (2 target classes). Not applicable here.")
+
+    # ========================= Final Audit Decision =========================
+    st.subheader("🏁 Final Audit Verdict")
+
+    verdict, risk, note = final_audit_decision(
+        quality_result["quality_score"],
+        metrics,
+        fairness_results
+    )
+
+    col1, col2 = st.columns(2)
+    col1.metric("Final Verdict", verdict)
+    col2.metric("Risk Level", risk)
+
+    st.write("📌 Recommendation:", note)
 
     # ========================= Generate Report =========================
     st.subheader("📄 Generate Audit Report (PDF)")
@@ -351,4 +346,10 @@ if uploaded_file:
         st.success("✅ Audit Report Generated Successfully!")
 
         with open(report_path, "rb") as f:
-            st.download_button("Download Report", f, file_name="audit_report.pdf")
+            st.download_button(
+                "⬇️ Download Report",
+                f,
+                file_name="audit_report.pdf"
+            )
+else:
+    st.warning("📌 Upload a dataset or click **Use Demo Dataset** to begin auditing.")
