@@ -360,30 +360,46 @@ if df is not None:
     # ========================= Generate Report =========================
     st.subheader("📄 Generate Audit Report (PDF)")
 
-    if st.button("Generate Report"):
+    # initialize session state for pdf
+    if "pdf_bytes" not in st.session_state:
+        st.session_state["pdf_bytes"] = None
+
+    if "report_ready" not in st.session_state:
+        st.session_state["report_ready"] = False
+
+
+    generate_btn = st.button("Generate Report")
+
+    if generate_btn:
         try:
-            pdf_bytes = generate_pdf_report(
-                "reports/audit_report.pdf",
-                quality_result["quality_score"],
-                quality_result,
-                metrics,
-                fairness_results,
-                bias_table
-            )
+            with st.spinner("⏳ Generating PDF Report... Please wait"):
+                pdf_bytes = generate_pdf_report(
+                    "reports/audit_report.pdf",
+                    quality_result["quality_score"],
+                    quality_result,
+                    metrics,
+                    fairness_results,
+                    bias_table
+                )
+
+            st.session_state["pdf_bytes"] = pdf_bytes
+            st.session_state["report_ready"] = True
 
             st.success("✅ Report Generated Successfully!")
 
-            st.download_button(
-                label="⬇️ Download Report",
-                data=pdf_bytes,
-                file_name="audit_report.pdf",
-                mime="application/pdf"
-            )
-
         except Exception as e:
+            st.session_state["pdf_bytes"] = None
+            st.session_state["report_ready"] = False
+
             st.error("❌ Report generation failed!")
             st.exception(e)
 
 
-else:
-    st.warning("📌 Upload a dataset or click **Use Demo Dataset** to begin auditing.")
+    # show download button after report is generated
+    if st.session_state["report_ready"] and st.session_state["pdf_bytes"] is not None:
+        st.download_button(
+            label="⬇️ Download Report",
+            data=st.session_state["pdf_bytes"],
+            file_name="audit_report.pdf",
+            mime="application/pdf"
+        )
