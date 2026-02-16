@@ -2,6 +2,7 @@ from fpdf import FPDF
 import os
 
 
+# ================= CLEAN TEXT =================
 def clean_text(text):
     """
     Removes unsupported unicode characters for FPDF (latin-1).
@@ -11,6 +12,7 @@ def clean_text(text):
     return str(text).encode("latin-1", "ignore").decode("latin-1")
 
 
+# ================= VERDICT FROM DATASET SCORE =================
 def verdict_from_score(score):
     if score >= 80:
         return "PASS", "Low Risk"
@@ -20,6 +22,7 @@ def verdict_from_score(score):
         return "FAIL", "High Risk"
 
 
+# ================= MODEL VERDICT =================
 def model_verdict(metrics):
     """
     Handles both classification and regression metrics.
@@ -85,24 +88,44 @@ def model_verdict(metrics):
                 "Model can be deployed with monitoring."
             )
 
-    else:
-        return (
-            "Model evaluation not supported.",
-            "Unknown ML task type.",
-            "Ensure correct target selection."
-        )
+    return (
+        "Model evaluation not supported.",
+        "Unknown ML task type.",
+        "Ensure correct target selection."
+    )
 
 
-def fairness_verdict(parity_data):
+# ================= FAIRNESS VERDICT =================
+def fairness_verdict(fairness_result):
     """
-    Expects statistical parity output directly (not full fairness dict).
+    fairness_result is expected as dict:
+    {
+        "Group Accuracy": {...},
+        "Statistical Parity (Selection Rate)": {...}
+    }
     """
 
-    if parity_data is None:
+    if fairness_result is None:
         return (
             "Fairness could not be evaluated.",
             "No fairness results were provided.",
             "Ensure binary classification + valid sensitive attribute."
+        )
+
+    if isinstance(fairness_result, dict) and "error" in fairness_result:
+        return (
+            "Fairness evaluation failed.",
+            fairness_result["error"],
+            "Use binary target and a valid sensitive attribute."
+        )
+
+    parity_data = fairness_result.get("Statistical Parity (Selection Rate)", None)
+
+    if parity_data is None:
+        return (
+            "Fairness evaluation not available.",
+            "Statistical parity results missing.",
+            "Fairness check requires binary predictions and multiple groups."
         )
 
     if isinstance(parity_data, dict) and "error" in parity_data:
@@ -127,19 +150,21 @@ def fairness_verdict(parity_data):
             f"Selection rate difference is high ({round(diff, 3)}).",
             "Apply bias mitigation strategies (reweighting, resampling, threshold tuning)."
         )
-    else:
-        return (
-            "Fairness acceptable.",
-            f"Selection rate difference is low ({round(diff, 3)}).",
-            "Continue fairness monitoring post-deployment."
-        )
+
+    return (
+        "Fairness acceptable.",
+        f"Selection rate difference is low ({round(diff, 3)}).",
+        "Continue fairness monitoring post-deployment."
+    )
 
 
+# ================= BIAS SUMMARY =================
 def summarize_bias_table(bias_table):
     """
     Converts bias table into short summary instead of printing full table.
-    Works assuming bias_table is a normalized percentage table.
+    bias_table is expected to be a normalized percentage table (0–100).
     """
+
     if bias_table is None:
         return ["Bias summary could not be generated (bias table missing)."]
 
@@ -160,12 +185,12 @@ def summarize_bias_table(bias_table):
                 max_disparity = disparity
                 worst_group = idx
 
-        summary_lines.append(f"Highest bias disparity observed in group: {worst_group}")
-        summary_lines.append(f"Maximum disparity across target labels: {round(max_disparity, 2)}")
+        summary_lines.append(f"Highest disparity group: {worst_group}")
+        summary_lines.append(f"Maximum disparity: {round(max_disparity, 2)}%")
 
-        if max_disparity > 0.2:
+        if max_disparity > 20:
             summary_lines.append("Bias Risk: High")
-        elif max_disparity > 0.1:
+        elif max_disparity > 10:
             summary_lines.append("Bias Risk: Medium")
         else:
             summary_lines.append("Bias Risk: Low")
@@ -176,23 +201,22 @@ def summarize_bias_table(bias_table):
     return summary_lines
 
 
+# ================= PDF REPORT GENERATOR =================
 def generate_pdf_report(
     path,
     dataset_quality,
     quality_meta,
     model_metrics,
-    parity_result,
+    fairness_result,
     bias_table=None
 ):
     pdf = FPDF()
     pdf.add_page()
-
     pdf.set_auto_page_break(auto=True, margin=15)
 
     # ================= Title =================
     pdf.set_font("Arial", "B", 18)
     pdf.cell(0, 12, clean_text("Responsible AI Audit Report"), ln=True)
-
     pdf.ln(5)
 
     # ================= Dataset Section =================
@@ -258,15 +282,12 @@ Action:
         pdf.multi_cell(0, 8, clean_text(f"- MAE: {model_metrics.get('mae', 'N/A')}"))
         pdf.multi_cell(0, 8, clean_text(f"- RMSE: {model_metrics.get('rmse', 'N/A')}"))
 
-    else:
-        pdf.multi_cell(0, 8, clean_text("- Metrics not available."))
-
     # ================= Fairness Section =================
     pdf.ln(4)
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, clean_text("3. Fairness & Bias Assessment"), ln=True)
 
-    fairness, reason, action = fairness_verdict(parity_result)
+    fairness, reason, action = fairness_verdict(fairness_result)
 
     pdf.set_font("Arial", size=12)
     pdf.multi_cell(
@@ -285,13 +306,13 @@ Action:
         )
     )
 
+    # ================= Bias Summary =================
     pdf.ln(3)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, clean_text("Bias Summary (Sensitive Attribute vs Target)"), ln=True)
 
     pdf.set_font("Arial", size=12)
     bias_summary = summarize_bias_table(bias_table)
-
     for line in bias_summary:
         pdf.multi_cell(0, 8, clean_text(f"- {line}"))
 
@@ -301,18 +322,15 @@ Action:
     pdf.cell(0, 10, clean_text("4. Final Audit Decision"), ln=True)
 
     model_task = model_metrics.get("task", "unknown")
-    diff = parity_result.get("difference", 0) if isinstance(parity_result, dict) else 0
-
     final_decision = "AUDIT INCOMPLETE"
     final_note = "Audit could not be completed due to missing evaluation results."
 
     if model_task == "classification":
         acc = model_metrics.get("accuracy", None)
-
         if acc is not None:
-            if dataset_quality < 60 or acc < 0.5 or diff > 0.2:
+            if dataset_quality < 60 or acc < 0.5:
                 final_decision = "AUDIT FAILED"
-                final_note = "System is unsafe for deployment due to quality/performance/fairness issues."
+                final_note = "This system is not safe for deployment."
             elif dataset_quality < 80 or acc < 0.7:
                 final_decision = "AUDIT CONDITIONAL PASS"
                 final_note = "Deploy only after improvements and monitoring."
@@ -322,7 +340,6 @@ Action:
 
     elif model_task == "regression":
         rmse = model_metrics.get("rmse", None)
-
         if rmse is not None:
             if dataset_quality < 60 or rmse > 50:
                 final_decision = "AUDIT FAILED"
@@ -347,7 +364,15 @@ Final Recommendation:
         )
     )
 
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    pdf.output(path)
+    # ================= Return bytes for Streamlit =================
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
 
-    return path
+
+    # Optional local save (works locally, ignored on deployment if not allowed)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        pdf.output(path)
+    except Exception:
+        pass
+
+    return pdf_bytes

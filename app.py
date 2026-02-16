@@ -334,22 +334,29 @@ if df is not None:
     st.subheader("📄 Generate Audit Report (PDF)")
 
     if st.button("Generate Report"):
-        report_path = generate_pdf_report(
-            "reports/audit_report.pdf",
-            quality_result["quality_score"],
-            quality_result,
-            metrics,
-            fairness_results,
-            bias_table
-        )
-
-        st.success("✅ Audit Report Generated Successfully!")
-
-        with open(report_path, "rb") as f:
-            st.download_button(
-                "⬇️ Download Report",
-                f,
-                file_name="audit_report.pdf"
+        try:
+            pdf_bytes = generate_pdf_report(
+                "reports/audit_report.pdf",
+                quality_result["quality_score"],
+                quality_result,
+                metrics,
+                fairness_results,
+                bias_table
             )
+
+            st.success("✅ Report Generated Successfully!")
+
+            st.download_button(
+                label="⬇️ Download Report",
+                data=pdf_bytes,
+                file_name="audit_report.pdf",
+                mime="application/pdf"
+            )
+
+        except Exception as e:
+            st.error("❌ Report generation failed!")
+            st.exception(e)
+
+
 else:
     st.warning("📌 Upload a dataset or click **Use Demo Dataset** to begin auditing.")
