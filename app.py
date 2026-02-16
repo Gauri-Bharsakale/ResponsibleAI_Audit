@@ -47,66 +47,51 @@ reset = st.button("🔄 Reset App")
 if reset:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
-
-    st.success("✅ App reset successfully!")
     st.rerun()
-
 
 
 
 # ========================= Load Dataset =========================
 if "df" not in st.session_state:
-    st.session_state["df"] = None
+    st.session_state.df = None
 
 if "demo_mode" not in st.session_state:
-    st.session_state["demo_mode"] = False
+    st.session_state.demo_mode = False
 
 if "dataset_loaded" not in st.session_state:
-    st.session_state["dataset_loaded"] = False
-
-if "dataset_name" not in st.session_state:
-    st.session_state["dataset_name"] = ""
+    st.session_state.dataset_loaded = False
 
 
-# ========================= Demo Dataset Button =========================
+# Demo dataset button
 if use_demo:
     try:
-        st.session_state["df"] = load_demo_dataset()
-        st.session_state["demo_mode"] = True
-        st.session_state["dataset_loaded"] = True
-        st.session_state["dataset_name"] = "Adult Census Income Dataset"
-
+        st.session_state.df = load_demo_dataset()
+        st.session_state.demo_mode = True
+        st.session_state.dataset_loaded = True
         st.success("✅ Demo Dataset Loaded: Adult Census Income Dataset")
-        st.rerun()
 
     except Exception as e:
         st.error("❌ Failed to load demo dataset")
         st.exception(e)
 
 
-# ========================= Uploaded Dataset =========================
+# Uploaded dataset
 if uploaded_file is not None:
     try:
-        df_uploaded = load_dataset(uploaded_file)   # USE YOUR FUNCTION
-        st.session_state["df"] = df_uploaded
-        st.session_state["demo_mode"] = False
-        st.session_state["dataset_loaded"] = True
-        st.session_state["dataset_name"] = uploaded_file.name
-
+        df_uploaded = pd.read_csv(uploaded_file, sep=None, engine="python")
+        st.session_state.df = df_uploaded
+        st.session_state.demo_mode = False
+        st.session_state.dataset_loaded = True
         st.success(f"✅ Dataset Uploaded Successfully: {uploaded_file.name}")
-        st.rerun()
 
     except Exception as e:
         st.error("❌ Failed to load uploaded dataset")
         st.exception(e)
 
 
-# ========================= Restore Values =========================
-df = st.session_state["df"]
-demo_mode = st.session_state["demo_mode"]
-dataset_loaded = st.session_state["dataset_loaded"]
-dataset_name = st.session_state["dataset_name"]
-
+# Restore values
+df = st.session_state.df
+demo_mode = st.session_state.demo_mode
 
 
 
