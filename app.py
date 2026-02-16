@@ -50,17 +50,44 @@ if reset:
 
 
 # ========================= Load Dataset =========================
-df = None
-demo_mode = False
+if "df" not in st.session_state:
+    st.session_state["df"] = None
+
+if "demo_mode" not in st.session_state:
+    st.session_state["demo_mode"] = False
+
+
+df = st.session_state["df"]
+demo_mode = st.session_state["demo_mode"]
+
 
 if use_demo:
-    df = load_demo_dataset()
-    demo_mode = True
-    st.success("✅ Demo Dataset Loaded: Adult Census Income Dataset")
+    try:
+        st.session_state["df"] = load_demo_dataset()
+        st.session_state["demo_mode"] = True
+        st.success("✅ Demo Dataset Loaded: Adult Census Income Dataset")
+        st.rerun()
+
+    except Exception as e:
+        st.error("❌ Failed to load demo dataset")
+        st.exception(e)
+
 
 elif uploaded_file:
-    df = load_dataset(uploaded_file)
-    st.success("✅ Dataset Uploaded Successfully!")
+    try:
+        st.session_state["df"] = load_dataset(uploaded_file)
+        st.session_state["demo_mode"] = False
+        st.success("✅ Dataset Uploaded Successfully!")
+        st.rerun()
+
+    except Exception as e:
+        st.error("❌ Failed to load uploaded dataset")
+        st.exception(e)
+
+
+# restore values after rerun
+df = st.session_state["df"]
+demo_mode = st.session_state["demo_mode"]
 
 
 # ========================= Helper: Final Decision =========================
