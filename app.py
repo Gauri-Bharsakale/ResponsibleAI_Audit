@@ -56,15 +56,16 @@ if "df" not in st.session_state:
 if "demo_mode" not in st.session_state:
     st.session_state["demo_mode"] = False
 
+if "uploaded_filename" not in st.session_state:
+    st.session_state["uploaded_filename"] = None
 
-df = st.session_state["df"]
-demo_mode = st.session_state["demo_mode"]
 
-
+# DEMO dataset
 if use_demo:
     try:
         st.session_state["df"] = load_demo_dataset()
         st.session_state["demo_mode"] = True
+        st.session_state["uploaded_filename"] = None
         st.success("✅ Demo Dataset Loaded: Adult Census Income Dataset")
         st.rerun()
 
@@ -73,11 +74,15 @@ if use_demo:
         st.exception(e)
 
 
-elif uploaded_file:
+# UPLOADED dataset
+elif uploaded_file is not None:
     try:
-        st.session_state["df"] = load_dataset(uploaded_file)
+        df_uploaded = pd.read_csv(uploaded_file)   # <-- IMPORTANT FIX
+        st.session_state["df"] = df_uploaded
         st.session_state["demo_mode"] = False
-        st.success("✅ Dataset Uploaded Successfully!")
+        st.session_state["uploaded_filename"] = uploaded_file.name
+
+        st.success(f"✅ Dataset Uploaded Successfully: {uploaded_file.name}")
         st.rerun()
 
     except Exception as e:
@@ -85,9 +90,10 @@ elif uploaded_file:
         st.exception(e)
 
 
-# restore values after rerun
+# Restore
 df = st.session_state["df"]
 demo_mode = st.session_state["demo_mode"]
+
 
 
 # ========================= Helper: Final Decision =========================
