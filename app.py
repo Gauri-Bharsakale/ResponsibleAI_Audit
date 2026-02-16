@@ -45,54 +45,54 @@ reset = st.button("🔄 Reset App")
 
 # ========================= Reset =========================
 if reset:
-    st.session_state.clear()
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
     st.rerun()
+
 
 
 # ========================= Load Dataset =========================
 if "df" not in st.session_state:
-    st.session_state["df"] = None
+    st.session_state.df = None
 
 if "demo_mode" not in st.session_state:
-    st.session_state["demo_mode"] = False
+    st.session_state.demo_mode = False
 
-if "uploaded_filename" not in st.session_state:
-    st.session_state["uploaded_filename"] = None
+if "dataset_loaded" not in st.session_state:
+    st.session_state.dataset_loaded = False
 
 
-# DEMO dataset
+# Demo dataset button
 if use_demo:
     try:
-        st.session_state["df"] = load_demo_dataset()
-        st.session_state["demo_mode"] = True
-        st.session_state["uploaded_filename"] = None
+        st.session_state.df = load_demo_dataset()
+        st.session_state.demo_mode = True
+        st.session_state.dataset_loaded = True
         st.success("✅ Demo Dataset Loaded: Adult Census Income Dataset")
-        st.rerun()
 
     except Exception as e:
         st.error("❌ Failed to load demo dataset")
         st.exception(e)
 
 
-# UPLOADED dataset
-elif uploaded_file is not None:
+# Uploaded dataset
+if uploaded_file is not None:
     try:
-        df_uploaded = pd.read_csv(uploaded_file)   # <-- IMPORTANT FIX
-        st.session_state["df"] = df_uploaded
-        st.session_state["demo_mode"] = False
-        st.session_state["uploaded_filename"] = uploaded_file.name
-
+        df_uploaded = pd.read_csv(uploaded_file, sep=None, engine="python")
+        st.session_state.df = df_uploaded
+        st.session_state.demo_mode = False
+        st.session_state.dataset_loaded = True
         st.success(f"✅ Dataset Uploaded Successfully: {uploaded_file.name}")
-        st.rerun()
 
     except Exception as e:
         st.error("❌ Failed to load uploaded dataset")
         st.exception(e)
 
 
-# Restore
-df = st.session_state["df"]
-demo_mode = st.session_state["demo_mode"]
+# Restore values
+df = st.session_state.df
+demo_mode = st.session_state.demo_mode
+
 
 
 

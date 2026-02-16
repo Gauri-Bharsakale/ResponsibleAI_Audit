@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 ADULT_COLUMNS = [
     "age", "workclass", "fnlwgt", "education", "education-num",
     "marital-status", "occupation", "relationship", "race", "sex",
@@ -11,16 +10,22 @@ ADULT_COLUMNS = [
 def load_dataset(uploaded_file):
     """
     Loads dataset uploaded by user (CSV/TXT/DATA).
+    Works properly in Streamlit deployment.
     """
 
     try:
-        df = pd.read_csv(uploaded_file)
+        uploaded_file.seek(0)
+        df = pd.read_csv(uploaded_file, sep=None, engine="python")
         return df
+
     except Exception:
         try:
+            uploaded_file.seek(0)
             df = pd.read_csv(uploaded_file, delimiter=r"\s+", engine="python")
             return df
+
         except Exception:
+            uploaded_file.seek(0)
             df = pd.read_csv(uploaded_file, header=None)
             return df
 
